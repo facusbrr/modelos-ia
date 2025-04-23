@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Operaciones con TensorFlow.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  </head>
+  <body>
+    <h1>Operaciones con Matrices usando TensorFlow.js</h1>
+
+    <form id="matrix-form">
+      <label for="rows">Número de filas:</label>
+      <input type="number" id="rows" name="rows" min="1" required />
+      <br /><br />
+      <label for="columns">Número de columnas:</label>
+      <input type="number" id="columns" name="columns" min="1" required />
+      <br /><br />
+      <button type="submit">Generar y Calcular</button>
+    </form>
+
+    <h2>Resultados:</h2>
+    <div id="results">
+      <p><strong>Matriz A:</strong></p>
+      <pre id="matrix-a"></pre>
+      <p><strong>Matriz B:</strong></p>
+      <pre id="matrix-b"></pre>
+      <p><strong>Suma:</strong></p>
+      <pre id="sum"></pre>
+      <p><strong>Producto:</strong></p>
+      <pre id="product"></pre>
+    </div>
+    <script>
+      function generarMatrizAleatoria(filas, columnas) {
+        return tf.randomUniform([filas, columnas], 1, 21, "int32"); // 21 porque el límite superior es exclusivo
+      }
+
+      document
+        .getElementById("matrix-form")
+        .addEventListener("submit", async function (event) {
+          event.preventDefault();
+          const filas = parseInt(document.getElementById("rows").value);
+          const columnas = parseInt(document.getElementById("columns").value);
+
+          const matrizA = generarMatrizAleatoria(filas, columnas);
+          const matrizB = generarMatrizAleatoria(filas, columnas);
+
+          const suma = tf.add(matrizA, matrizB);
+          const producto = tf.matMul(matrizA, matrizB.transpose());
+
+          const aArray = await matrizA.array();
+          const bArray = await matrizB.array();
+          const sumaArray = await suma.array();
+          const productoArray = await producto.array();
+
+          document.getElementById("matrix-a").textContent = JSON.stringify(
+            aArray,
+            null,
+            2,
+          );
+          document.getElementById("matrix-b").textContent = JSON.stringify(
+            bArray,
+            null,
+            2,
+          );
+          document.getElementById("sum").textContent = JSON.stringify(
+            sumaArray,
+            null,
+            2,
+          );
+          document.getElementById("product").textContent = JSON.stringify(
+            productoArray,
+            null,
+            2,
+          );
+        });
+    </script>
+  </body>
+</html>
