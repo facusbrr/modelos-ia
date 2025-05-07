@@ -1,22 +1,50 @@
-<html>
+<!doctype html>
+<html lang="es">
   <head>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <meta charset="UTF-8" />
+    <title>Predicción con TensorFlow.js</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+
+      h1 {
+        color: #222;
+      }
+
+      #result {
+        margin-top: 20px;
+      }
+
+      canvas {
+        margin-top: 30px;
+        max-width: 100%;
+      }
+    </style>
   </head>
   <body>
-    <h1>TensorFlow.js Example</h1>
-    <p>Formula: \( y = 2x + 6 \)</p>
+    <h1>Predicción con TensorFlow.js</h1>
+    <p><strong>Fórmula:</strong> \( y = 2x + 6 \)</p>
 
     <div>
       <button onclick="trainModel()">Entrenar Modelo</button>
-      <input type="number" id="inputValue" value="4" />
+      <br /><br />
+      <label for="inputValue">Valores de X (separados por comas):</label>
+      <input type="text" id="inputValue" value="10, 20, 25" />
       <button onclick="predict()">Predecir</button>
     </div>
 
     <div id="result"></div>
 
+    <canvas id="lossChart" width="600" height="300"></canvas>
+
     <script>
       let model;
       let isModelReady = false;
+      let lossValues = [];
 
       async function trainModel() {
         model = tf.sequential();
@@ -27,10 +55,33 @@
         const xs = tf.tensor2d([-6, -5, -4, -3, -2, -1, 0, 1, 2], [9, 1]);
         const ys = tf.tensor2d([-6, -4, -2, 0, 2, 4, 6, 8, 10], [9, 1]);
 
-        await model.fit(xs, ys, { epochs: 350 });
-        isModelReady = true;
-        document.getElementById("result").innerText =
-          "Modelo entrenado y listo para predecir";
+        lossValues = [];
+
+        await model.fit(xs, ys, {
+          epochs: 350,
+          callbacks: {
+            onEpochEnd: async (epoch, logs) => {
+              lossValues.push({ epoch, loss: logs.loss });
+            },
+            onTrainEnd: () => {
+              isModelReady = true;
+              document.getElementById("result").innerHTML =
+                "<p><strong>Estado:</strong> Modelo entrenado correctamente</p>";
+              renderLossChart();
+
+              // Mostrar pérdida inicial y final
+              const initialLoss = lossValues[0].loss;
+              const finalLoss = lossValues[lossValues.length - 1].loss;
+              const reduction = ((initialLoss - finalLoss) / initialLoss) * 100;
+
+              document.getElementById("result").innerHTML += `
+              <p>Pérdida inicial: ${initialLoss.toFixed(4)}, 
+              Pérdida final: ${finalLoss.toFixed(4)} 
+              (Reducción: ${reduction.toFixed(2)}%)</p>
+            `;
+            },
+          },
+        });
       }
 
       async function predict() {
@@ -40,18 +91,67 @@
           return;
         }
 
-        const inputValue = parseFloat(
-          document.getElementById("inputValue").value,
-        );
-        const inputTensor = tf.tensor2d([inputValue], [1, 1]);
+        const inputText = document.getElementById("inputValue").value;
+        const inputValues = inputText
+          .split(",")
+          .map((v) => parseFloat(v.trim()));
+        const inputTensor = tf.tensor2d(inputValues, [inputValues.length, 1]);
+
         const prediction = model.predict(inputTensor);
         const result = await prediction.data();
 
-        document.getElementById("result").innerText =
-          `El resultado de predecir para ${inputValue} es: ${result[0]}`;
+        let output = "<p><strong>Resultados:</strong></p><ul>";
+        inputValues.forEach((x, i) => {
+          output += `<li>Para x = ${x}: y = ${result[i].toFixed(2)}</li>`;
+        });
+        output += "</ul>";
+
+        document.getElementById("result").innerHTML += output;
 
         inputTensor.dispose();
         prediction.dispose();
+      }
+
+      function renderLossChart() {
+        const ctx = document.getElementById("lossChart").getContext("2d");
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: lossValues.map((v) => v.epoch),
+            datasets: [
+              {
+                label: "Pérdida (Loss)",
+                data: lossValues.map((v) => v.loss),
+                fill: false,
+                borderColor: "teal",
+                tension: 0.1,
+                pointRadius: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Gráfica de Pérdida durante el Entrenamiento",
+              },
+            },
+            scales: {
+              x: {
+                title: { display: true, text: "Época" },
+                ticks: {
+                  callback: function (value, index) {
+                    return index % 10 === 0 ? value : "";
+                  },
+                },
+              },
+              y: {
+                title: { display: true, text: "Valor de Pérdida" },
+              },
+            },
+          },
+        });
       }
     </script>
   </body>
